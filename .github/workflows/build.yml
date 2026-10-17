@@ -1,0 +1,123 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  PARSEC_VDD_URL: https://builds.parsec.app/vdd/parsec-vdd-0.45.0.0.exe
+  PARSEC_VDD_SHA256: E23332448FDAF5AA017CB308DB5EF6855FAC526A7DED05D80C039404126D5362
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Resolve version
+        id: ver
+        shell: pwsh
+        run: |
+          if ("${{ github.ref }}" -like "refs/tags/v*") {
+            $v = "${{ github.ref_name }}".Substring(1)
+          } else {
+            $v = "0.0.0-ci"
+          }
+          if ($v -notmatch '^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$') { throw "Tag '$v' is not a semantic version (expected vX.Y.Z)" }
+          $asm = ($v -split '-')[0] + '.0'
+          "version=$v" >> $env:GITHUB_OUTPUT
+          "assembly=$asm" >> $env:GITHUB_OUTPUT
+          Write-Host "Building version $v (assembly $asm)"
+
+      - name: Build
+        run: >
+          dotnet build src/VRMonitorSwitch/VRMonitorSwitch.csproj -c Release
+          -p:Version=${{ steps.ver.outputs.version }}
+          -p:AssemblyVersion=${{ steps.ver.outputs.assembly }}
+          -p:FileVersion=${{ steps.ver.outputs.assembly }}
+
+      - name: Publish
+        run: >
+          dotnet publish src/VRMonitorSwitch/VRMonitorSwitch.csproj -c Release -o dist/app
+          -p:Version=${{ steps.ver.outputs.version }}
+          -p:AssemblyVersion=${{ steps.ver.outputs.assembly }}
+          -p:FileVersion=${{ steps.ver.outputs.assembly }}
+
+      - name: Trim publish output
+        shell: pwsh
+        run: Get-ChildItem dist/app -Include '*.pdb','*.xml' -Recurse | Remove-Item -Force -ErrorAction SilentlyContinue
+
+      - name: Download Parsec VDD redist
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          New-Item -ItemType Directory -Force -Path installer/redist | Out-Null
+          $out = 'installer/redist/parsec-vdd-0.45.0.0.exe'
+          Invoke-WebRequest -Uri $env:PARSEC_VDD_URL -OutFile $out -UseBasicParsing
+          $hash = (Get-FileHash $out -Algorithm SHA256).Hash
+          if ($hash -ine $env:PARSEC_VDD_SHA256) {
+            Remove-Item $out -Force
+            throw "SHA-256 mismatch for parsec-vdd-0.45.0.0.exe: expected $env:PARSEC_VDD_SHA256, got $hash"
+          }
+          Write-Host "Redist verified: $hash"
+
+      - name: Install Inno Setup
+        run: choco install innosetup -y --no-progress
+
+      - name: Compile installer
+        shell: pwsh
+        run: |
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) { throw "ISCC.exe not found at $iscc" }
+          & $iscc "/DAppVersion=${{ steps.ver.outputs.version }}" installer\VRMonitorSwitch.iss
+          if ($LASTEXITCODE -ne 0) { throw "ISCC exited with code $LASTEXITCODE" }
+
+      - name: Create portable zip
+        shell: pwsh
+        run: Compress-Archive -Path dist/app/* -DestinationPath "dist/VRMonitorSwitch-${{ steps.ver.outputs.version }}-portable.zip" -Force
+
+      - name: Checksums
+        shell: pwsh
+        run: |
+          # Only the two release assets (not dist/app/VRMonitorSwitch.exe, which is inside the zip).
+          Get-ChildItem dist/VRMonitorSwitch-Setup-*.exe, dist/VRMonitorSwitch-*-portable.zip -File |
+            ForEach-Object { "{0}  {1}" -f (Get-FileHash $_ -Algorithm SHA256).Hash, $_.Name } |
+            Set-Content -Encoding ascii dist/SHA256SUMS.txt
+          Get-Content dist/SHA256SUMS.txt
+
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: VRMonitorSwitch-${{ steps.ver.outputs.version }}
+          if-no-files-found: error
+          path: |
+            dist/VRMonitorSwitch-Setup-*.exe
+            dist/VRMonitorSwitch-*-portable.zip
+            dist/SHA256SUMS.txt
+
+      - name: Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          name: VR Monitor Switch ${{ steps.ver.outputs.version }}
+          generate_release_notes: true
+          files: |
+            dist/VRMonitorSwitch-Setup-*.exe
+            dist/VRMonitorSwitch-*-portable.zip
+            dist/SHA256SUMS.txt

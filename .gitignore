@@ -1,0 +1,10 @@
+bin/
+obj/
+*.user
+*.suo
+.vs/
+dist/
+installer/Output/
+installer/redist/*.exe
+*.log
+TestResults/
