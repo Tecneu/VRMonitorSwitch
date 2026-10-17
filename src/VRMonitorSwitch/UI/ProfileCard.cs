@@ -452,9 +452,10 @@ namespace VRMonitorSwitch.UI
                 }
                 default:
                 {
-                    int h = usableH;
-                    int w = h * 16 / 9;
-                    if (w > area.Width) { w = area.Width; h = w * 9 / 16; }
+                    // Same visual weight as the other cards: a bit larger than one of the dual screens.
+                    int w = area.Width * 3 / 5;
+                    int h = w * 9 / 16;
+                    if (h > usableH) { h = usableH; w = h * 16 / 9; }
                     int x0 = area.Left + (area.Width - w) / 2;
                     int y0 = area.Top + (usableH - h) / 2;
                     screens.Add(new Rectangle(x0, y0, w, h));

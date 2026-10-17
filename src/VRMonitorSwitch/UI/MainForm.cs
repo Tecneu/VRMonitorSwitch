@@ -406,18 +406,18 @@ namespace VRMonitorSwitch.UI
             var title = new Label { Text = Strings.Get("step.laptop.title"), AutoSize = true, Anchor = AnchorStyles.None, TextAlign = ContentAlignment.MiddleCenter, Margin = new Padding(3, 3, 3, 10) };
             Theme.StyleLabel(title, Theme.FontTitle);
 
-            var question = new Label { Text = Strings.Get("step.laptop.question"), AutoSize = true, Anchor = AnchorStyles.None, TextAlign = ContentAlignment.MiddleCenter, MaximumSize = new Size(640, 0), Margin = new Padding(3, 3, 3, 6) };
+            var question = new Label { Text = Strings.Get("step.laptop.question"), AutoSize = true, Anchor = AnchorStyles.None, TextAlign = ContentAlignment.MiddleCenter, MaximumSize = new Size(Theme.Scale(this, 640), 0), Margin = new Padding(3, 3, 3, 6) };
             Theme.StyleLabel(question, Theme.FontSubtitle);
 
-            var hint = new Label { Text = Strings.Get("step.laptop.hint"), AutoSize = true, Anchor = AnchorStyles.None, TextAlign = ContentAlignment.MiddleCenter, MaximumSize = new Size(640, 0), Margin = new Padding(3, 3, 3, 24) };
+            var hint = new Label { Text = Strings.Get("step.laptop.hint"), AutoSize = true, Anchor = AnchorStyles.None, TextAlign = ContentAlignment.MiddleCenter, MaximumSize = new Size(Theme.Scale(this, 640), 0), Margin = new Padding(3, 3, 3, 24) };
             Theme.StyleLabel(hint, Theme.FontBody, muted: true);
 
-            _laptopOffButton = new Button { Text = Strings.Get("step.laptop.off"), Size = new Size(280, 96), Margin = new Padding(12) };
+            _laptopOffButton = new Button { Text = Strings.Get("step.laptop.off"), Size = new Size(Theme.Scale(this, 300), Theme.Scale(this, 84)), Margin = new Padding(Theme.Scale(this, 12)) };
             Theme.StyleButton(_laptopOffButton, primary: true);
             _laptopOffButton.Font = Theme.FontSubtitleBold;
             _laptopOffButton.Click += (s, e) => AnswerLaptop(true);
 
-            _laptopOnButton = new Button { Text = Strings.Get("step.laptop.on"), Size = new Size(280, 96), Margin = new Padding(12) };
+            _laptopOnButton = new Button { Text = Strings.Get("step.laptop.on"), Size = new Size(Theme.Scale(this, 300), Theme.Scale(this, 84)), Margin = new Padding(Theme.Scale(this, 12)) };
             Theme.StyleButton(_laptopOnButton, primary: false);
             _laptopOnButton.Font = Theme.FontSubtitleBold;
             _laptopOnButton.Click += (s, e) => AnswerLaptop(false);
@@ -539,7 +539,7 @@ namespace VRMonitorSwitch.UI
             Theme.StyleLabel(_progressLabel, Theme.FontBody, muted: true);
             _progressLabel.BackColor = Theme.Surface;
 
-            _marquee = new ProgressBar { Style = ProgressBarStyle.Marquee, MarqueeAnimationSpeed = 30, Size = new Size(180, 14), Anchor = AnchorStyles.Right, Visible = false, Margin = new Padding(16, 0, 0, 0) };
+            _marquee = new ProgressBar { Style = ProgressBarStyle.Marquee, MarqueeAnimationSpeed = 30, Size = new Size(Theme.Scale(this, 180), Theme.Scale(this, 14)), Anchor = AnchorStyles.Right, Visible = false, Margin = new Padding(16, 0, 0, 0) };
 
             table.Controls.Add(_stateLabel, 0, 0);
             table.Controls.Add(_progressLabel, 1, 0);
