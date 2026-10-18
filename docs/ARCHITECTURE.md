@@ -280,6 +280,10 @@ public sealed class SessionController : IDisposable
    `turnOffLaptopScreen` is ignored with a warning) and the number of Parsec targets already connected
    (`GetDisplays(true)`), which the restore wait below treats as foreign.
 3. `vdd.Open()`; add `profile.MonitorCount` displays, 400 ms apart; `WaitForParsecDisplays(count, timeout)`.
+   **3b.** Windows attaches a brand-new monitor as a *clone* of the primary screen (same source and GDI name as the
+   laptop panel), so `EnsureExtendedTopology` detects any Parsec target sharing a source with a physical display (or
+   with another Parsec target), calls `SetTopology(Extend)`, waits 1 s and re-enumerates; a mode is never set on a
+   device name that also belongs to a physical screen. Verified on hardware 2026-10-18.
    If the laptop screen is to be kept on, re-query `GetDisplays(true)`: when Windows re-applied a persisted
    "internal inactive" entry on the hot-plug, call `SetInternalDisplayEnabled(true)` (logged, non-fatal).
 4. For each new Parsec display: `SetMode(device, mode)` — if it fails, try `GetSupportedModes` and pick the

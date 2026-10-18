@@ -7,37 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
+## [0.1.0] - 2026-10-18
 
-- Recovery of a laptop screen left off by a killed session: a banner with **Encender pantalla de la laptop**
-  when the built-in display is connected but inactive, and `--restore` performs the same recovery when no
-  instance is running.
-- `--diagnose` prints the driver (minor) version when the driver is `Ok`.
-- Per-monitor DPI rescaling (`App.config` opt-in `DpiAwareness=PerMonitorV2`).
-
-### Fixed
-
-- Restore waits for the virtual monitors to leave the display topology before re-applying the snapshot and never
-  saves a layout to the Windows connectivity database while a Parsec target is still connected (the saved
-  "Parsec inactive" entry made the next profile come up with inactive monitors).
-- If Windows turns the laptop screen off by itself when the virtual monitors appear (persisted entry) while the
-  user chose to keep it on, it is turned back on.
-- Installer: `VersionInfoVersion` accepts prerelease/CI versions; driver presence is detected through the
-  `HardwareID` of `Enum\ROOT\DISPLAY\*` (the driver was re-installed on every upgrade); silent installs download
-  the driver; the downloaded driver is kept in `{app}\redist`; the download-failure prompt shows the real reason;
-  the setup refuses Windows on ARM (`x64os`).
-- UI: the balloon warns when the laptop screen could not be turned off; tray double-click without an active
-  session shows the window instead of exiting; a cancelled Windows shutdown no longer leaves the app without a
-  tray icon; Escape closes an open resolution list instead of going back a step; clicking the "Resolución"
-  caption opens the list instead of applying; CLI apply errors show the window before the dialog; driver status
-  texts are localized; "Falta el driver" is only used when it is really missing; the driver download has timeouts.
-- An unhandled UI exception no longer tears down the active VR session; a second instance can bring the first
-  one to the foreground; an inaccessible single-instance mutex (elevated instance) is treated as "already
-  running"; a cancelled driver IOCTL is waited for at most 2 s instead of forever.
-- Mode fallback prefers the requested refresh rate instead of the fastest one; Spanish wording
-  ("huella SHA-256", "Ultrapanorámico"); `SHA256SUMS.txt` lists only the two release assets.
-
-## [0.1.0] - 2026-10-16
+First public release. Verified on an ASUS Zenbook S 16 (Windows 11 25H2, AMD Radeon 890M) with a
+Meta Quest 3 and Virtual Desktop: single, ultrawide (laptop screen off) and dual profiles, plus restore.
 
 ### Added
 
@@ -49,7 +22,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Optional switch-off of the laptop's built-in screen for the duration of the VR session, with the
   answer remembered on request.
 - Automatic restore of the previous display layout on exit, on tray "Restore", on Windows sign-out
-  and on process exit.
+  and on process exit; recovery banner and `--restore` for a laptop screen left off by a killed session.
+- Windows attaches a brand-new monitor as a clone of the primary screen; the app switches to the
+  extended topology before touching any display mode, so the laptop panel keeps its own resolution.
 - Resident tray icon that keeps the driver heartbeat alive while a profile is active
   (Show / Restore and exit / Change profile / Exit).
 - Command-line switches: `--profile`, `--mode`, `--laptop`, `--diagnose`, `--restore`, `--lang`.
