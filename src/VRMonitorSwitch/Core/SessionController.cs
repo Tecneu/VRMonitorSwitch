@@ -214,6 +214,11 @@ namespace VRMonitorSwitch.Core
                         throw new TimeoutException(Strings.Get("err.noDisplays"), ex);
                     }
 
+                    // New monitors come up cloned onto the primary screen by default; make sure they are extended.
+                    parsecAll = EnsureExtendedTopology(parsecAll, expected, timeout);
+                    _internal = DisplayManager.FindInternal(DisplayManager.GetDisplays(false)) ?? _internal;
+                    before = DisplayManager.GetDisplays(false).Where(d => d.IsActive && !d.IsParsecVirtual).ToList();
+
                     List<DisplayInfo> newParsec = parsecAll
                         .Where(d => d.IsParsecVirtual && d.IsActive && !string.IsNullOrEmpty(d.DeviceName) && !preExistingParsec.Contains(d.DeviceName))
                         .OrderBy(d => d.DeviceName, StringComparer.OrdinalIgnoreCase)
@@ -253,6 +258,13 @@ namespace VRMonitorSwitch.Core
                     }
 
                     // 4. Resolution on each virtual display.
+                    foreach (DisplayInfo d in newParsec)
+                    {
+                        if (before.Any(p => string.Equals(p.DeviceName, d.DeviceName, StringComparison.OrdinalIgnoreCase)))
+                        {
+                            throw new InvalidOperationException(Strings.Get("err.display.cloneStuck"));
+                        }
+                    }
                     DisplayMode effective = null;
                     foreach (DisplayInfo d in newParsec)
                     {
@@ -453,6 +465,60 @@ namespace VRMonitorSwitch.Core
                 Report("session.step.restored");
             }
             Log.Info("Restore finished → " + finalState);
+        }
+
+        /// <summary>
+        /// Windows attaches a brand-new monitor as a clone of the primary display by default. In that topology the
+        /// virtual target shares its source (and GDI device name) with the physical screen, so a mode change would
+        /// hit the laptop panel. Detects that situation and forces the "extend" topology so every target gets its
+        /// own source. Returns the refreshed list of active Parsec displays.
+        /// </summary>
+        private List<DisplayInfo> EnsureExtendedTopology(List<DisplayInfo> parsecAll, int expected, TimeSpan timeout)
+        {
+            for (int attempt = 0; attempt < 2; attempt++)
+            {
+                List<DisplayInfo> active;
+                try
+                {
+                    active = DisplayManager.GetDisplays(false).Where(d => d.IsActive).ToList();
+                }
+                catch (Exception ex)
+                {
+                    Log.Warn("EnsureExtendedTopology: enumeration failed, assuming extended: " + ex.Message);
+                    return parsecAll;
+                }
+
+                var physicalNames = new HashSet<string>(
+                    active.Where(d => !d.IsParsecVirtual && !string.IsNullOrEmpty(d.DeviceName)).Select(d => d.DeviceName),
+                    StringComparer.OrdinalIgnoreCase);
+                var physicalSources = new HashSet<string>(
+                    active.Where(d => !d.IsParsecVirtual).Select(d => d.AdapterIdValue + ":" + d.SourceId));
+                List<DisplayInfo> parsec = active.Where(d => d.IsParsecVirtual).ToList();
+
+                bool clonedWithPhysical = parsec.Any(d =>
+                    physicalNames.Contains(d.DeviceName ?? string.Empty) ||
+                    physicalSources.Contains(d.AdapterIdValue + ":" + d.SourceId));
+                int distinctParsecSources = parsec.Select(d => d.AdapterIdValue + ":" + d.SourceId).Distinct().Count();
+                bool clonedTogether = distinctParsecSources < parsec.Count;
+
+                if (!clonedWithPhysical && !clonedTogether)
+                {
+                    return parsecAll;
+                }
+
+                if (attempt == 1)
+                {
+                    throw new InvalidOperationException(Strings.Get("err.display.cloneStuck"));
+                }
+
+                Log.Warn("Windows attached the virtual display(s) in clone mode (" +
+                         (clonedWithPhysical ? "with a physical screen" : "with each other") + "); switching the topology to Extend.");
+                Report("session.step.extend");
+                DisplayManager.SetTopology(TopologyKind.Extend);
+                Thread.Sleep(1000);
+                parsecAll = DisplayManager.WaitForParsecDisplays(expected, timeout);
+            }
+            return parsecAll;
         }
 
         private void DisposeVddQuietly()
