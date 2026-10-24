@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-10-23
+
+### Fixed
+- "The virtual monitors did not show up": when Windows leaves the new Parsec targets connected but inactive
+  (seen with another virtual display such as Virtual Desktop's own monitor present), the app now applies the
+  extended topology to activate them instead of timing out. The wait is 30 s by default and the display list is
+  logged on timeout.
+
 ## [0.1.0] - 2026-10-18
 
 First public release. Verified on an ASUS Zenbook S 16 (Windows 11 25H2, AMD Radeon 890M) with a
@@ -37,5 +45,6 @@ Meta Quest 3 and Virtual Desktop: single, ultrawide (laptop screen off) and dual
 - Portable zip, local build script (`scripts/build.ps1`) and GitHub Actions workflow that publishes
   both artifacts on `v*` tags.
 
-[Unreleased]: https://github.com/Tecneu/VRMonitorSwitch/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/Tecneu/VRMonitorSwitch/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/Tecneu/VRMonitorSwitch/releases/tag/v0.1.1
 [0.1.0]: https://github.com/Tecneu/VRMonitorSwitch/releases/tag/v0.1.0

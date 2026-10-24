@@ -162,32 +162,61 @@ namespace VRMonitorSwitch.Display
         {
             DateTime deadline = DateTime.UtcNow + timeout;
             int lastCount = -1;
+            int lastInactive = -1;
+            bool extendTried = false;
             while (true)
             {
-                List<DisplayInfo> parsec;
+                List<DisplayInfo> all;
                 try
                 {
-                    parsec = GetDisplays(false).Where(d => d.IsParsecVirtual && d.IsActive).ToList();
+                    all = GetDisplays(true);
                 }
                 catch (Exception ex)
                 {
                     Log.Warn("DisplayManager.WaitForParsecDisplays: enumeration failed, retrying: " + ex.Message);
-                    parsec = new List<DisplayInfo>();
+                    all = new List<DisplayInfo>();
                 }
 
-                if (parsec.Count != lastCount)
+                List<DisplayInfo> parsec = all.Where(d => d.IsParsecVirtual && d.IsActive).ToList();
+                int inactive = all.Count(d => d.IsParsecVirtual && !d.IsActive);
+
+                if (parsec.Count != lastCount || inactive != lastInactive)
                 {
-                    Log.Info("DisplayManager.WaitForParsecDisplays: " + parsec.Count + "/" + expectedCount + " active Parsec display(s)");
+                    Log.Info("DisplayManager.WaitForParsecDisplays: " + parsec.Count + "/" + expectedCount +
+                             " active Parsec display(s)" + (inactive > 0 ? ", " + inactive + " connected but inactive" : string.Empty));
                     lastCount = parsec.Count;
+                    lastInactive = inactive;
                 }
 
                 if (parsec.Count >= expectedCount)
                     return parsec.OrderBy(d => d.DeviceName, StringComparer.OrdinalIgnoreCase).ToList();
 
+                // Windows (or a saved connectivity entry) may leave the new targets connected but inactive, e.g. when
+                // another virtual display such as Virtual Desktop's own monitor is present. The "extend" topology
+                // activates every available target, so try it once as soon as an inactive Parsec target shows up.
+                if (inactive > 0 && !extendTried)
+                {
+                    extendTried = true;
+                    Log.Warn("DisplayManager.WaitForParsecDisplays: " + inactive + " Parsec target(s) are connected but inactive; applying the Extend topology.");
+                    try
+                    {
+                        SetTopology(TopologyKind.Extend);
+                        Thread.Sleep(1000);
+                        continue;
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Warn("DisplayManager.WaitForParsecDisplays: SetTopology(Extend) failed: " + ex.Message);
+                    }
+                }
+
                 if (DateTime.UtcNow >= deadline)
                 {
+                    foreach (DisplayInfo d in all)
+                        Log.Warn("  At timeout: " + d);
                     var tex = new TimeoutException(Msg("err.display.parsecTimeout",
-                        parsec.Count + "/" + expectedCount + " after " + (int)timeout.TotalMilliseconds + " ms"));
+                        parsec.Count + "/" + expectedCount + " after " + (int)timeout.TotalMilliseconds + " ms" +
+                        (inactive > 0 ? ", " + inactive + " inactive" : string.Empty)));
                     Log.Error("DisplayManager.WaitForParsecDisplays timed out", tex);
                     throw tex;
                 }

@@ -38,7 +38,7 @@ namespace VRMonitorSwitch.Core
         public int KeepAliveIntervalMs { get; set; } = 50;
 
         /// <summary>How long to wait for Windows to show the new virtual displays.</summary>
-        public int DisplayAppearTimeoutMs { get; set; } = 15000;
+        public int DisplayAppearTimeoutMs { get; set; } = 30000;
 
         /// <summary>null = follow Windows; "es" or "en" to force.</summary>
         public string Language { get; set; }
